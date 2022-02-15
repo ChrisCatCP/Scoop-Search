@@ -190,7 +190,7 @@ int main(int argc, char* argv[])
 		auto future = scoop::worker.submit(scoop::search_app, bucket, key_word);
 		list.emplace_back(bucket_name, std::move(future));
 	}
-
+	scoop::worker.wait_for_tasks();
 	for (auto& it : list)
 	{
 		auto vec = it.second.get();
