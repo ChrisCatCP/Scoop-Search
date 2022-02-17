@@ -1,5 +1,5 @@
 # Scoop-Search
-[![Build Release](https://github.com/chriscp-cat/Scoop-Search/actions/workflows/build.yaml/badge.svg?branch=master&event=push)](https://github.com/chriscp-cat/Scoop-Search/actions/workflows/build.yaml)
+[![Build Release](https://github.com/chriscp-cat/Scoop-Search/actions/workflows/build.yaml/badge.svg)](https://github.com/chriscp-cat/Scoop-Search/actions/workflows/build.yaml)
 
 Alternative to  ```scoop search``` 
 
