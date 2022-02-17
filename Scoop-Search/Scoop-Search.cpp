@@ -184,7 +184,7 @@ int main(int argc, char* argv[])
 	const std::string key_word = util::a2u(argv[1]);
 	if(key_word == "--hook")
 	{
-		std::cout << R"(function scoop { if ($args[0] -eq "search") { scoop-search.exe @($args | Select-Object -Skip 1) } else { scoop.ps1 @args } })";
+		std::cout << R"(function scoop { if ($args[0] -eq "search") { Scoop-Search.exe @($args | Select-Object -Skip 1) } else { scoop.ps1 @args } })";
 	}
 	SetConsoleOutputCP(CP_UTF8);
 	std::vector<std::pair<std::string, std::future<scoop::search_result_t>>> list;
