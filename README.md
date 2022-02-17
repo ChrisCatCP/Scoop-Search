@@ -13,5 +13,5 @@ Alternative to  ```scoop search```
 
 Add this to your Powershell profile ```$profile```
 ```powershell
-Invoke-Expression (&scoop-search --hook)
+Invoke-Expression (&Scoop-Search --hook)
 ```
