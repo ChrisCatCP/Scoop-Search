@@ -1,0 +1,79 @@
+name: Build Release
+
+on:
+ create:
+  tags:
+  - v*.*.*
+ pull_request:
+   branches:
+   - master
+   
+
+jobs:
+
+   
+  release:
+   runs-on: windows-latest
+   if: github.event.ref_type == 'tag'
+   outputs: 
+    upload_url: ${{ steps.create_release.outputs.upload_url }}
+   steps:
+   - name: Create Release
+     id: create_release
+     uses: actions/create-release@v1
+     env:
+       GITHUB_TOKEN: ${{ secrets.TOKEN }}
+     with:
+      tag_name: ${{ github.ref }}
+      release_name: ${{ github.ref }}
+      draft: false
+      prerelease: false
+      
+  build:
+    runs-on: windows-latest
+    needs: release
+    strategy:
+      matrix:
+        platform: [x86, x64]    
+    steps:
+    - uses: actions/checkout@v2
+       
+    - name: intsall-vcpkg
+      working-directory: ${{ env.GITHUB_WORKSPACE }}
+      run: |
+       git clone https://github.com/microsoft/vcpkg
+       .\vcpkg\bootstrap-vcpkg.bat
+      
+      
+    - name: install-library
+      working-directory: ${{ env.GITHUB_WORKSPACE }}
+      shell: cmd
+      run: |
+       cd vcpkg
+       vcpkg install jsoncpp:${{ matrix.platform }}-windows-static
+       
+    - name: build
+      working-directory: ${{ env.GITHUB_WORKSPACE }} 
+      shell: cmd
+      run: |
+         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.platform }}
+         mkdir %GITHUB_WORKSPACE%/build
+         cmake -S %GITHUB_WORKSPACE% -B "%GITHUB_WORKSPACE%/build" -G Ninja -DCMAKE_TOOLCHAIN_FILE="%GITHUB_WORKSPACE%/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET:STRING="${{ matrix.platform }}-windows-static" -DCMAKE_BUILD_TYPE:STRING="Release"
+         cmake --build "%GITHUB_WORKSPACE%/build
+    - name: pack file
+      run: |
+       Compress-Archive -Path ./build/Scoop-Search/Scoop-Search.exe -DestinationPath ./${{ matrix.platform }}-Release.zip
+       
+    - name: upload
+      uses: actions/upload-release-asset@v1
+      if: github.event.ref_type == 'tag'
+      env:
+         GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+       upload_url: ${{ needs.release.outputs.upload_url }} 
+       asset_path: ./${{ matrix.platform }}-Release.zip
+       asset_name: ${{ matrix.platform }}-Release.zip
+       asset_content_type: application/zip  
+    
+       
+     
