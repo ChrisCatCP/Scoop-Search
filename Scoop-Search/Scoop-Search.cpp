@@ -27,7 +27,7 @@ namespace scoop
 	using match_result_t = std::optional<app_info>;
 	using search_result_t = std::vector<std::future<match_result_t>>;
 
-	thread_pool worker{8};
+	thread_pool worker{4};
 	std::string system_bit = util::get_system_bit();
 
 	fs::path get_path()
