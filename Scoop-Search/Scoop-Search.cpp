@@ -196,20 +196,18 @@ int main(int argc, char* argv[])
 		list.emplace_back(bucket_name, std::move(future));
 	}
 	scoop::worker.wait_for_tasks();
-	for (auto& it : list)
+	for (auto& [bucket, search_result] : list)
 	{
-		auto vec = it.second.get();
-		for (auto& future : vec)
+		for (auto vec = search_result.get(); auto& future : vec)
 		{
-			auto app = future.get();
-			if (app)
+			if (auto app = future.get())
 			{
-				std::cout << console::color(console::color::yellow,false) << it.first;
-				std::cout << console::color(console::color::white, false) << "/";
-				std::cout << console::color(console::color::green, false) << app.value().name
-				<< console::color(console::color::white, false) << std::endl;
-				std::cout << "  Version: " << console::color(console::color::blue, false) <<
-					app.value().version << console::color(console::color::white, false) << std::endl;
+				std::cout << hue::yellow << bucket;
+				std::cout << hue::reset << "/";
+				std::cout << hue::green << app.value().name
+				<< hue::reset << std::endl;
+				std::cout << "  Version: " << hue::blue <<
+					app.value().version << hue::reset << std::endl;
 				std::cout << "  Description: " << app.value().description << std::endl;
 				if (!app.value().binaries.empty())
 				{
