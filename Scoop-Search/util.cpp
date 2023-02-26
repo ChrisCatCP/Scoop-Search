@@ -18,42 +18,42 @@ namespace util
 
 	std::wstring u2w(const std::string_view& input)
 	{
-		const auto wlen = MultiByteToWideChar(CP_UTF8, NULL,
+		const size_t wlen = MultiByteToWideChar(CP_UTF8, NULL,
 		                                      input.data(), input.size(), nullptr, 0);
-		auto wstr = std::make_shared<wchar_t[]>(wlen);
+		const auto wstr = std::make_shared<wchar_t[]>(wlen);
 		MultiByteToWideChar(CP_UTF8,NULL,
 		                    input.data(), input.size(), wstr.get(), wlen);
-		return std::wstring(wstr.get(), wlen);
+		return { wstr.get(), wlen };
 	}
 
 	std::wstring a2w(const std::string_view& input)
 	{
-		const auto wlen = MultiByteToWideChar(CP_ACP, NULL,
+		const size_t wlen = MultiByteToWideChar(CP_ACP, NULL,
 		                                      input.data(), input.size(), nullptr, 0);
-		auto wstr = std::make_shared<wchar_t[]>(wlen);
+		const auto wstr = std::make_shared<wchar_t[]>(wlen);
 		MultiByteToWideChar(CP_ACP, NULL,
 		                    input.data(), input.size(), wstr.get(), wlen);
-		return std::wstring(wstr.get(), wlen);
+		return { wstr.get(), wlen };
 	}
 
 	std::string w2u(const std::wstring_view& input)
 	{
-		auto len = WideCharToMultiByte(CP_UTF8,NULL,
-		                               input.data(), input.size(), nullptr, 0, nullptr, nullptr);
-		auto str = std::make_shared<char[]>(len);
+		const size_t len = WideCharToMultiByte(CP_UTF8,NULL,
+		                                       input.data(), input.size(), nullptr, 0, nullptr, nullptr);
+		const auto str = std::make_shared<char[]>(len);
 		WideCharToMultiByte(CP_UTF8, NULL,
 		                    input.data(), input.size(), str.get(), len, nullptr, nullptr);
-		return std::string(str.get(), len);
+		return { str.get(), len };
 	}
 
 	std::string w2a(const std::wstring_view& input)
 	{
-		auto len = WideCharToMultiByte(CP_ACP, NULL,
+		size_t len = WideCharToMultiByte(CP_ACP, NULL,
 		                               input.data(), input.size(), nullptr, 0, nullptr, nullptr);
-		auto str = std::make_shared<char[]>(len);
+		const auto str = std::make_shared<char[]>(len);
 		WideCharToMultiByte(CP_ACP, NULL,
 		                    input.data(), input.size(), str.get(), len, nullptr, nullptr);
-		return std::string(str.get(), len);
+		return { str.get(), len };
 	}
 
 	std::string u2a(const std::string_view& input)
@@ -69,16 +69,18 @@ namespace util
 	std::string read_all(fs::path path)
 	{
 		std::ifstream input(path);
-		return std::string(std::istreambuf_iterator<char>(input),
-		                   std::istreambuf_iterator<char>());
+		return {
+			std::istreambuf_iterator(input),
+			std::istreambuf_iterator<char>()
+		};
 	}
 
 	bool string_find(const std::string& str1, const std::string& str2, bool ignore_case)
 	{
-		if(ignore_case)
+		if (ignore_case)
 		{
-			auto it = std::ranges::search(str1, str2,
-				[](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
+			const auto it = std::ranges::search(str1, str2,
+			                                    [](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
 			).begin();
 			return (it != str1.end());
 		}

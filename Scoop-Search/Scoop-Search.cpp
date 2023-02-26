@@ -7,6 +7,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <format>
+#include <regex>
 #include <Windows.h>
 #include <json/json.h>
 
@@ -182,18 +183,37 @@ namespace scoop
 
 int main(int argc, char* argv[])
 {
-	const std::string key_word = util::a2u(argv[1]);
+	std::string key_word = util::a2u(argv[1]);
 	if(key_word == "--hook")
 	{
 		std::cout << R"(function scoop { if ($args[0] -eq "search") { Scoop-Search.exe @($args | Select-Object -Skip 1) } else { scoop.ps1 @args } })";
 	}
 	SetConsoleOutputCP(CP_UTF8);
 	std::vector<std::pair<std::string, std::future<scoop::search_result_t>>> list;
+	std::wregex regex{ LR"((.*?)/(.*))" };
+	std::optional<std::wstring> special_bucket{};
+	auto key_word_utf16 = util::u2w(key_word);
+	std::wsmatch match_result;
+	if (std::regex_match(key_word_utf16, match_result, regex))
+	{
+		special_bucket = match_result[1].str();
+		key_word = util::w2u(match_result[2].str());
+	}
 	for (const auto& bucket : scoop::get_buckets())
 	{
-		const std::string bucket_name = bucket.stem().string();
-		auto future = scoop::worker.submit(scoop::search_app, bucket, key_word);
-		list.emplace_back(bucket_name, std::move(future));
+		if(!special_bucket)
+		{
+			const std::string bucket_name = bucket.stem().string();
+			auto future = scoop::worker.submit(scoop::search_app, bucket, key_word);
+			list.emplace_back(bucket_name, std::move(future));
+			continue;
+		}
+		if(special_bucket.value() == bucket.stem())
+		{
+			const std::string bucket_name = bucket.stem().string();
+			auto future = scoop::worker.submit(scoop::search_app, bucket, key_word);
+			list.emplace_back(bucket_name, std::move(future));
+		}
 	}
 	scoop::worker.wait_for_tasks();
 	for (auto& [bucket, search_result] : list)
