@@ -11,6 +11,6 @@ add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 aux_source_directory(. SRC_FILES)
 add_executable (Scoop-Search ${SRC_FILES})
 
-target_link_libraries(Scoop-Search PRIVATE jsoncpp_object)
+target_link_libraries(Scoop-Search PRIVATE JsonCpp::JsonCpp)
 
 set_property(TARGET Scoop-Search  PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:DebugDLL>")
