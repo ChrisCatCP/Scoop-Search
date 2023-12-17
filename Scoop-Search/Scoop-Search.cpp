@@ -49,7 +49,7 @@ namespace scoop
 		std::vector<fs::path> buckets;
 		for (const auto& bucket : fs::directory_iterator(scoop / "buckets"))
 		{
-			if (bucket.is_directory())
+			if (bucket.is_directory() && fs::is_directory(fs::path{ bucket } / "bucket"))
 				buckets.emplace_back(bucket);
 		}
 		return buckets;
