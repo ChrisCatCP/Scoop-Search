@@ -19,21 +19,21 @@ namespace util
 	std::wstring u2w(const std::string_view& input)
 	{
 		const size_t wlen = MultiByteToWideChar(CP_UTF8, NULL,
-		                                      input.data(), input.size(), nullptr, 0);
+		                                        input.data(), input.size(), nullptr, 0);
 		const auto wstr = std::make_shared<wchar_t[]>(wlen);
 		MultiByteToWideChar(CP_UTF8,NULL,
 		                    input.data(), input.size(), wstr.get(), wlen);
-		return { wstr.get(), wlen };
+		return {wstr.get(), wlen};
 	}
 
 	std::wstring a2w(const std::string_view& input)
 	{
 		const size_t wlen = MultiByteToWideChar(CP_ACP, NULL,
-		                                      input.data(), input.size(), nullptr, 0);
+		                                        input.data(), input.size(), nullptr, 0);
 		const auto wstr = std::make_shared<wchar_t[]>(wlen);
 		MultiByteToWideChar(CP_ACP, NULL,
 		                    input.data(), input.size(), wstr.get(), wlen);
-		return { wstr.get(), wlen };
+		return {wstr.get(), wlen};
 	}
 
 	std::string w2u(const std::wstring_view& input)
@@ -43,17 +43,17 @@ namespace util
 		const auto str = std::make_shared<char[]>(len);
 		WideCharToMultiByte(CP_UTF8, NULL,
 		                    input.data(), input.size(), str.get(), len, nullptr, nullptr);
-		return { str.get(), len };
+		return {str.get(), len};
 	}
 
 	std::string w2a(const std::wstring_view& input)
 	{
 		size_t len = WideCharToMultiByte(CP_ACP, NULL,
-		                               input.data(), input.size(), nullptr, 0, nullptr, nullptr);
+		                                 input.data(), input.size(), nullptr, 0, nullptr, nullptr);
 		const auto str = std::make_shared<char[]>(len);
 		WideCharToMultiByte(CP_ACP, NULL,
 		                    input.data(), input.size(), str.get(), len, nullptr, nullptr);
-		return { str.get(), len };
+		return {str.get(), len};
 	}
 
 	std::string u2a(const std::string_view& input)
@@ -75,13 +75,15 @@ namespace util
 		};
 	}
 
-	bool string_find(const std::string& str1, const std::string& str2, bool ignore_case)
+	bool string_find(const std::string& str1, const std::string& str2, const bool ignore_case)
 	{
 		if (ignore_case)
 		{
 			const auto it = std::ranges::search(str1, str2,
-			                                    [](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
-			).begin();
+			                                    [](const char ch1, const char ch2)
+			                                    {
+				                                    return std::toupper(ch1) == std::toupper(ch2);
+			                                    }).begin();
 			return (it != str1.end());
 		}
 		return str1.find(str2) != std::string::npos;

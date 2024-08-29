@@ -29,7 +29,7 @@ namespace scoop
 	using search_result_t = std::vector<std::future<match_result_t>>;
 
 
-	thread_pool worker{ max(std::thread::hardware_concurrency()-2 , 1) };
+	thread_pool worker{max(std::thread::hardware_concurrency()-2, 1)};
 	std::string system_bit = util::get_system_bit();
 
 	fs::path get_path()
@@ -49,7 +49,7 @@ namespace scoop
 		std::vector<fs::path> buckets;
 		for (const auto& bucket : fs::directory_iterator(scoop / "buckets"))
 		{
-			if (bucket.is_directory() && fs::is_directory(fs::path{ bucket } / "bucket"))
+			if (bucket.is_directory() && is_directory(fs::path{bucket} / "bucket"))
 				buckets.emplace_back(bucket);
 		}
 		return buckets;
@@ -66,48 +66,48 @@ namespace scoop
 		else
 			return false;
 		switch (bin.type())
-			{
+		{
 		case Json::stringValue:
-				if (util::string_find(bin.asString(),key_word))
-					app.binaries.emplace_back(std::format("{:s} > {:s}",
-					                                      bin.asString(), fs::path(bin.asString()).stem().string()));
-				break;
-			case Json::arrayValue:
-				for (const auto& value : bin)
+			if (util::string_find(bin.asString(), key_word))
+				app.binaries.emplace_back(std::format("{:s} > {:s}",
+				                                      bin.asString(), fs::path(bin.asString()).stem().string()));
+			break;
+		case Json::arrayValue:
+			for (const auto& value : bin)
+			{
+				switch (value.type())
 				{
-					switch (value.type())
+				case Json::stringValue:
+					if (util::string_find(value.asString(), key_word))
+						app.binaries.emplace_back(std::format("{:s} > {:s}",
+						                                      value.asString(),
+						                                      fs::path(value.asString()).stem().string()));
+					break;
+				case Json::arrayValue:
+					switch (value.size())
 					{
-					case Json::stringValue:
-						if (util::string_find(value.asString(), key_word))
+					case 1:
+						if (util::string_find(value[0].asString(), key_word))
 							app.binaries.emplace_back(std::format("{:s} > {:s}",
-							                                      value.asString(),
-							                                      fs::path(value.asString()).stem().string()));
-						break;
-					case Json::arrayValue:
-						switch (value.size())
-						{
-						case 1:
-							if(util::string_find(value[0].asString(),key_word))
-								app.binaries.emplace_back(std::format("{:s} > {:s}",
 							                                      value[0].asString(),
 							                                      fs::path(value[0].asString()).stem().string()));
-							break;
-						case 2:
-						case 3:
-							if (util::string_find(value[0].asString(), key_word) ||
-								util::string_find(value[1].asString(), key_word))
-								app.binaries.emplace_back(std::format("{:s} > {:s}",
+						break;
+					case 2:
+					case 3:
+						if (util::string_find(value[0].asString(), key_word) ||
+							util::string_find(value[1].asString(), key_word))
+							app.binaries.emplace_back(std::format("{:s} > {:s}",
 							                                      value[0].asString(), value[1].asString()));
-							break;
-						default: break;
-						}
 						break;
 					default: break;
 					}
+					break;
+				default: break;
 				}
-				break;
-			default: break;
 			}
+			break;
+		default: break;
+		}
 		return !app.binaries.empty();
 	}
 
@@ -129,7 +129,7 @@ namespace scoop
 				continue;
 			if (shortcut.size() < 2)
 				continue;
-			if(util::string_find(shortcut[0].asString(),key_word) ||
+			if (util::string_find(shortcut[0].asString(), key_word) ||
 				util::string_find(shortcut[1].asString(), key_word))
 			{
 				app.shortcuts.emplace_back(std::format("{:s} > {:s}", shortcut[0].asString(), shortcut[1].asString()));
@@ -153,11 +153,11 @@ namespace scoop
 			matched = true;
 		std::string desc = manifest["description"].asString();
 		app.description = desc;
-		if(util::string_find(desc,key_word))
+		if (util::string_find(desc, key_word))
 			matched = true;
 		if (search_binaries(app, manifest, key_word))
 			matched = true;
-		if(search_shortcuts(app, manifest, key_word))
+		if (search_shortcuts(app, manifest, key_word))
 			matched = true;
 		return matched ? std::optional(app) : std::optional<app_info>(std::nullopt);
 	}
@@ -183,14 +183,16 @@ namespace scoop
 
 int main(int argc, char* argv[])
 {
+	if (argc < 2) return 0;
 	std::string key_word = util::a2u(argv[1]);
-	if(key_word == "--hook")
+	if (key_word == "--hook")
 	{
-		std::cout << R"(function scoop { if ($args[0] -eq "search") { Scoop-Search.exe @($args | Select-Object -Skip 1) } else { scoop.ps1 @args } })";
+		std::cout <<
+			R"(function scoop { if ($args[0] -eq "search") { Scoop-Search.exe @($args | Select-Object -Skip 1) } else { scoop.ps1 @args } })";
 	}
 	SetConsoleOutputCP(CP_UTF8);
 	std::vector<std::pair<std::string, std::future<scoop::search_result_t>>> list;
-	std::wregex regex{ LR"((.*?)/(.*))" };
+	std::wregex regex{LR"((.*?)/(.*))"};
 	std::optional<std::wstring> special_bucket{};
 	auto key_word_utf16 = util::u2w(key_word);
 	std::wsmatch match_result;
@@ -201,14 +203,14 @@ int main(int argc, char* argv[])
 	}
 	for (const auto& bucket : scoop::get_buckets())
 	{
-		if(!special_bucket)
+		if (!special_bucket)
 		{
 			const std::string bucket_name = bucket.stem().string();
 			auto future = scoop::worker.submit(scoop::search_app, bucket, key_word);
 			list.emplace_back(bucket_name, std::move(future));
 			continue;
 		}
-		if(special_bucket.value() == bucket.stem())
+		if (special_bucket.value() == bucket.stem())
 		{
 			const std::string bucket_name = bucket.stem().string();
 			auto future = scoop::worker.submit(scoop::search_app, bucket, key_word);
@@ -225,7 +227,7 @@ int main(int argc, char* argv[])
 				std::cout << hue::yellow << bucket;
 				std::cout << hue::reset << "/";
 				std::cout << hue::green << app.value().name
-				<< hue::reset << std::endl;
+					<< hue::reset << std::endl;
 				std::cout << "  Version: " << hue::blue <<
 					app.value().version << hue::reset << std::endl;
 				std::cout << "  Description: " << app.value().description << std::endl;
@@ -237,7 +239,7 @@ int main(int argc, char* argv[])
 						std::cout << "    - " << bin << std::endl;
 					}
 				}
-				if(!app.value().shortcuts.empty())
+				if (!app.value().shortcuts.empty())
 				{
 					std::cout << "  Shortcuts:" << std::endl;
 					for (const auto& shortcut : app.value().shortcuts)
