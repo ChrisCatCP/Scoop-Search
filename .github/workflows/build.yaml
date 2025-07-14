@@ -7,29 +7,13 @@ on:
  pull_request:
    branches:
    - master
+ workflow_dispatch:
+  
    
 
-jobs:
-  release:
-   runs-on: ubuntu-latest
-   if: github.event.ref_type == 'tag'
-   outputs: 
-    upload_url: ${{ steps.create_release.outputs.upload_url }}
-   steps:
-   - name: Create Release
-     id: create_release
-     uses: actions/create-release@v1
-     env:
-       GITHUB_TOKEN: ${{ secrets.TOKEN }}
-     with:
-      tag_name: ${{ github.ref }}
-      release_name: ${{ github.ref }}
-      draft: false
-      prerelease: false
-      
+jobs: 
   build:
     runs-on: windows-2022
-    needs: release
     strategy:
       matrix:
         platform: [x86, x64]    
@@ -44,18 +28,22 @@ jobs:
          mkdir %GITHUB_WORKSPACE%/build
          cmake -S %GITHUB_WORKSPACE% -B "%GITHUB_WORKSPACE%/build" -G Ninja -DCMAKE_BUILD_TYPE:STRING="Release"
          cmake --build "%GITHUB_WORKSPACE%/build
+
     - name: pack file
       run: |
        Compress-Archive -Path ./build/Scoop-Search/Scoop-Search.exe -DestinationPath ./${{ matrix.platform }}-Release.zip
        
-    - name: upload
-      uses: actions/upload-release-asset@v1
+    - name: release
+      uses: softprops/action-gh-release@v2
       if: github.event.ref_type == 'tag'
-      env:
-         GITHUB_TOKEN: ${{ secrets.TOKEN }}
       with:
-       upload_url: ${{ needs.release.outputs.upload_url }} 
-       asset_path: ./${{ matrix.platform }}-Release.zip
-       asset_name: ${{ matrix.platform }}-Release.zip
-       asset_content_type: application/zip  
+        files: ./${{ matrix.platform }}-Release.zip
+        prerelease: false
 
+    - name: prerelease
+      uses: softprops/action-gh-release@v2
+      if: github.event.ref_type != 'tag'
+      with:
+        name: prerelease
+        files: ./${{ matrix.platform }}-Release.zip
+        prerelease: true
