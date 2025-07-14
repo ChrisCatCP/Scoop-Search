@@ -5,11 +5,9 @@ Alternative to  ```scoop search```
 
 
 ## Build
+* open with Visual Studio 2022
 
-* vcpkg install jsoncpp
-* open with Visual Studio
-
-## Hook
+## How To Use
 
 Add this to your Powershell profile ```$profile```
 ```powershell

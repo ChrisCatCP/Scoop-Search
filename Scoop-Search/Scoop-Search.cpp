@@ -2,14 +2,13 @@
 #include "thread_pool.hpp"
 #include "console_color.h"
 #include "util.h"
+#include "json.hpp"
 #include <string>
 #include <filesystem>
 #include <fstream>
-#include <cstdlib>
 #include <format>
 #include <regex>
 #include <Windows.h>
-#include <json/json.h>
 
 
 namespace fs = std::filesystem;
@@ -29,23 +28,23 @@ namespace scoop
 	using search_result_t = std::vector<std::future<match_result_t>>;
 
 
-	thread_pool worker{max(std::thread::hardware_concurrency()-2, 1)};
-	std::string system_bit = util::get_system_bit();
+	static thread_pool worker{max(std::thread::hardware_concurrency() / 2, 1)};
+	static std::string system_bit = util::get_system_bit();
 
-	fs::path get_path()
+	static fs::path get_scoop_path()
 	{
-		fs::path scoop_path = std::getenv("SCOOP");
+		fs::path scoop_path = getenv("SCOOP");
 		if (!exists(scoop_path))
 		{
-			std::cerr << "error:cant find scoop path";
+			std::cerr << "error:cant find scoop path" << '\n';
 			std::abort();
 		}
 		return scoop_path;
 	}
 
-	std::vector<fs::path> get_buckets()
+	static std::vector<fs::path> get_buckets()
 	{
-		const fs::path scoop = get_path();
+		const fs::path scoop = get_scoop_path();
 		std::vector<fs::path> buckets;
 		for (const auto& bucket : fs::directory_iterator(scoop / "buckets"))
 		{
@@ -55,114 +54,142 @@ namespace scoop
 		return buckets;
 	}
 
-	bool search_binaries(app_info& app, const Json::Value& manifest, const std::string& key_word)
+	static bool search_binaries(app_info& app, const nlohmann::json& manifest, const std::string& key_word)
 	{
-		Json::Value bin;
-		if (manifest.isMember("bin"))
+		nlohmann::json bin{};
+		if (manifest.contains("bin"))
 			bin = manifest["bin"];
-		else if (manifest.isMember("architecture") && manifest["architecture"].isMember(system_bit)
-			&& manifest["architecture"][system_bit].isMember("bin"))
+		else if (manifest.contains("architecture") && manifest["architecture"].contains(system_bit)
+			&& manifest["architecture"][system_bit].contains("bin"))
 			bin = manifest["architecture"][system_bit]["bin"];
 		else
 			return false;
 		switch (bin.type())
 		{
-		case Json::stringValue:
-			if (util::string_find(bin.asString(), key_word))
-				app.binaries.emplace_back(std::format("{:s} > {:s}",
-				                                      bin.asString(), fs::path(bin.asString()).stem().string()));
+		case nlohmann::json::value_t::string:
+			if (util::string_find(bin.get_ref<const std::string&>(), key_word))
+				app.binaries.emplace_back(std::format("{:s} > {:s}", bin.get_ref<const std::string&>(),
+				                                      fs::path(bin.get_ref<const std::string&>()).stem().string()));
 			break;
-		case Json::arrayValue:
+		case nlohmann::json::value_t::array:
 			for (const auto& value : bin)
 			{
 				switch (value.type())
 				{
-				case Json::stringValue:
-					if (util::string_find(value.asString(), key_word))
+				case nlohmann::json::value_t::string:
+					if (util::string_find(value.get_ref<const std::string&>(), key_word))
 						app.binaries.emplace_back(std::format("{:s} > {:s}",
-						                                      value.asString(),
-						                                      fs::path(value.asString()).stem().string()));
+						                                      value.get_ref<const std::string&>(),
+						                                      fs::path(value.get_ref<const std::string&>()).stem().
+						                                      string()));
 					break;
-				case Json::arrayValue:
+				case nlohmann::json::value_t::array:
 					switch (value.size())
 					{
 					case 1:
-						if (util::string_find(value[0].asString(), key_word))
+						if (util::string_find(value[0].get_ref<const std::string&>(), key_word))
 							app.binaries.emplace_back(std::format("{:s} > {:s}",
-							                                      value[0].asString(),
-							                                      fs::path(value[0].asString()).stem().string()));
+							                                      value[0].get_ref<const std::string&>(),
+							                                      fs::path(value[0].get_ref<const std::string&>()).
+							                                      stem().string()));
 						break;
 					case 2:
 					case 3:
-						if (util::string_find(value[0].asString(), key_word) ||
-							util::string_find(value[1].asString(), key_word))
+						if (util::string_find(value[0].get_ref<const std::string&>(), key_word) ||
+							util::string_find(value[1].get_ref<const std::string&>(), key_word))
 							app.binaries.emplace_back(std::format("{:s} > {:s}",
-							                                      value[0].asString(), value[1].asString()));
+							                                      value[0].get_ref<const std::string&>(),
+							                                      value[1].get_ref<const std::string&>()));
 						break;
 					default: break;
 					}
 					break;
-				default: break;
+				case nlohmann::detail::value_t::null:
+				case nlohmann::detail::value_t::object:
+				case nlohmann::detail::value_t::boolean:
+				case nlohmann::detail::value_t::number_integer:
+				case nlohmann::detail::value_t::number_unsigned:
+				case nlohmann::detail::value_t::number_float:
+				case nlohmann::detail::value_t::binary:
+				case nlohmann::detail::value_t::discarded:
+					break;
 				}
 			}
 			break;
-		default: break;
+		case nlohmann::detail::value_t::null:
+		case nlohmann::detail::value_t::object:
+		case nlohmann::detail::value_t::boolean:
+		case nlohmann::detail::value_t::number_integer:
+		case nlohmann::detail::value_t::number_unsigned:
+		case nlohmann::detail::value_t::number_float:
+		case nlohmann::detail::value_t::binary:
+		case nlohmann::detail::value_t::discarded:
+			break;
 		}
 		return !app.binaries.empty();
 	}
 
-	bool search_shortcuts(app_info& app, const Json::Value& manifest, const std::string& key_word)
+	static bool search_shortcuts(app_info& app, const nlohmann::json& manifest, const std::string& key_word)
 	{
-		Json::Value shortcuts;
-		if (manifest.isMember("shortcuts"))
+		nlohmann::json shortcuts{};
+		if (manifest.contains("shortcuts"))
 			shortcuts = manifest["shortcuts"];
-		else if (manifest.isMember("architecture") && manifest["architecture"].isMember(system_bit)
-			&& manifest["architecture"][system_bit].isMember("shortcuts"))
+		else if (manifest.contains("architecture") && manifest["architecture"].contains(system_bit)
+			&& manifest["architecture"][system_bit].contains("shortcuts"))
 			shortcuts = manifest["architecture"][system_bit]["shortcuts"];
 		else
 			return false;
-		if (!shortcuts.isArray())
+		if (!shortcuts.is_array())
 			return false;
 		for (auto shortcut : shortcuts)
 		{
-			if (!shortcut.isArray())
+			if (!shortcut.is_array())
 				continue;
 			if (shortcut.size() < 2)
 				continue;
-			if (util::string_find(shortcut[0].asString(), key_word) ||
-				util::string_find(shortcut[1].asString(), key_word))
+			if (util::string_find(shortcut[0].get_ref<const std::string&>(), key_word) ||
+				util::string_find(shortcut[1].get_ref<const std::string&>(), key_word))
 			{
-				app.shortcuts.emplace_back(std::format("{:s} > {:s}", shortcut[0].asString(), shortcut[1].asString()));
+				app.shortcuts.emplace_back(std::format("{:s} > {:s}", shortcut[0].get_ref<const std::string&>(),
+				                                       shortcut[1].get_ref<const std::string&>()));
 			}
 		}
 		return !app.shortcuts.empty();
 	}
 
-	match_result_t search_key_word(const fs::path& app_path, const std::string& key_word)
+	static match_result_t search_key_word(const fs::path& app_path, const std::string& key_word)
 	{
-		Json::Reader reader;
-		Json::Value manifest;
 		app_info app;
 		std::string content = util::read_all(app_path);
-		reader.parse(content, manifest);
-		const std::string app_name = app_path.stem().string();
 		bool matched = false;
-		app.name = app_name;
-		app.version = manifest["version"].asString();
-		if (util::string_find(app_name, key_word))
-			matched = true;
-		std::string desc = manifest["description"].asString();
-		app.description = desc;
-		if (util::string_find(desc, key_word))
-			matched = true;
-		if (search_binaries(app, manifest, key_word))
-			matched = true;
-		if (search_shortcuts(app, manifest, key_word))
-			matched = true;
-		return matched ? std::optional(app) : std::optional<app_info>(std::nullopt);
+		try
+		{
+			nlohmann::json manifest = nlohmann::json::parse(content);
+			const std::string app_name = app_path.stem().string();
+			app.name = app_name;
+			app.version = manifest["version"].get_ref<const std::string&>();
+			if (util::string_find(app_name, key_word))
+				matched = true;
+			if (manifest["description"].is_string())
+			{
+				app.description = manifest["description"].get_ref<const std::string&>();
+				if (util::string_find(app.description, key_word))
+					matched = true;
+			}
+			if (search_binaries(app, manifest, key_word))
+				matched = true;
+			if (search_shortcuts(app, manifest, key_word))
+				matched = true;
+		}
+		catch (nlohmann::json::parse_error& e)
+		{
+			std::cerr << app_path.generic_string() << ": " << e.what() << '\n';
+			return std::nullopt;
+		}
+		return matched ? std::optional(app) : std::nullopt;
 	}
 
-	search_result_t search_app(const fs::path& bucket, const std::string& key_word)
+	static search_result_t search_app(const fs::path& bucket, const std::string& key_word)
 	{
 		const auto path = bucket / "bucket";
 		search_result_t result;
@@ -181,22 +208,22 @@ namespace scoop
 	}
 }
 
-int main(int argc, char* argv[])
+int wmain(int argc, wchar_t* argv[])
 {
 	if (argc < 2) return 0;
-	std::string key_word = util::a2u(argv[1]);
+	std::string key_word = util::w2u(argv[1]);
 	if (key_word == "--hook")
 	{
 		std::cout <<
 			R"(function scoop { if ($args[0] -eq "search") { Scoop-Search.exe @($args | Select-Object -Skip 1) } else { scoop.ps1 @args } })";
+		return 0;
 	}
 	SetConsoleOutputCP(CP_UTF8);
 	std::vector<std::pair<std::string, std::future<scoop::search_result_t>>> list;
 	std::wregex regex{LR"((.*?)/(.*))"};
 	std::optional<std::wstring> special_bucket{};
 	auto key_word_utf16 = util::u2w(key_word);
-	std::wsmatch match_result;
-	if (std::regex_match(key_word_utf16, match_result, regex))
+	if (std::wsmatch match_result; std::regex_match(key_word_utf16, match_result, regex))
 	{
 		special_bucket = match_result[1].str();
 		key_word = util::w2u(match_result[2].str());
@@ -227,24 +254,24 @@ int main(int argc, char* argv[])
 				std::cout << hue::yellow << bucket;
 				std::cout << hue::reset << "/";
 				std::cout << hue::green << app.value().name
-					<< hue::reset << std::endl;
+					<< hue::reset << '\n';
 				std::cout << "  Version: " << hue::blue <<
-					app.value().version << hue::reset << std::endl;
-				std::cout << "  Description: " << app.value().description << std::endl;
+					app.value().version << hue::reset << '\n';
+				std::cout << "  Description: " << app.value().description << '\n';
 				if (!app.value().binaries.empty())
 				{
-					std::cout << "  Binaries:" << std::endl;
+					std::cout << "  Binaries:" << '\n';
 					for (const auto& bin : app.value().binaries)
 					{
-						std::cout << "    - " << bin << std::endl;
+						std::cout << "    - " << bin << '\n';
 					}
 				}
 				if (!app.value().shortcuts.empty())
 				{
-					std::cout << "  Shortcuts:" << std::endl;
+					std::cout << "  Shortcuts:" << '\n';
 					for (const auto& shortcut : app.value().shortcuts)
 					{
-						std::cout << "    - " << shortcut << std::endl;
+						std::cout << "    - " << shortcut << '\n';
 					}
 				}
 			}

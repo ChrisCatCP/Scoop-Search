@@ -19,40 +19,43 @@ namespace util
 	std::wstring u2w(const std::string_view& input)
 	{
 		const size_t wlen = MultiByteToWideChar(CP_UTF8, NULL,
-		                                        input.data(), input.size(), nullptr, 0);
+		                                        input.data(), static_cast<int>(input.size()), nullptr, 0);
 		const auto wstr = std::make_shared<wchar_t[]>(wlen);
 		MultiByteToWideChar(CP_UTF8,NULL,
-		                    input.data(), input.size(), wstr.get(), wlen);
+		                    input.data(), static_cast<int>(input.size()), wstr.get(), static_cast<int>(wlen));
 		return {wstr.get(), wlen};
 	}
 
 	std::wstring a2w(const std::string_view& input)
 	{
 		const size_t wlen = MultiByteToWideChar(CP_ACP, NULL,
-		                                        input.data(), input.size(), nullptr, 0);
+		                                        input.data(), static_cast<int>(input.size()), nullptr, 0);
 		const auto wstr = std::make_shared<wchar_t[]>(wlen);
 		MultiByteToWideChar(CP_ACP, NULL,
-		                    input.data(), input.size(), wstr.get(), wlen);
+		                    input.data(), static_cast<int>(input.size()), wstr.get(), static_cast<int>(wlen));
 		return {wstr.get(), wlen};
 	}
 
 	std::string w2u(const std::wstring_view& input)
 	{
 		const size_t len = WideCharToMultiByte(CP_UTF8,NULL,
-		                                       input.data(), input.size(), nullptr, 0, nullptr, nullptr);
+		                                       input.data(), static_cast<int>(input.size()), nullptr, 0, nullptr,
+		                                       nullptr);
 		const auto str = std::make_shared<char[]>(len);
 		WideCharToMultiByte(CP_UTF8, NULL,
-		                    input.data(), input.size(), str.get(), len, nullptr, nullptr);
+		                    input.data(), static_cast<int>(input.size()), str.get(), static_cast<int>(len), nullptr,
+		                    nullptr);
 		return {str.get(), len};
 	}
 
 	std::string w2a(const std::wstring_view& input)
 	{
 		size_t len = WideCharToMultiByte(CP_ACP, NULL,
-		                                 input.data(), input.size(), nullptr, 0, nullptr, nullptr);
+		                                 input.data(), static_cast<int>(input.size()), nullptr, 0, nullptr, nullptr);
 		const auto str = std::make_shared<char[]>(len);
 		WideCharToMultiByte(CP_ACP, NULL,
-		                    input.data(), input.size(), str.get(), len, nullptr, nullptr);
+		                    input.data(), static_cast<int>(input.size()), str.get(), static_cast<int>(len), nullptr,
+		                    nullptr);
 		return {str.get(), len};
 	}
 
