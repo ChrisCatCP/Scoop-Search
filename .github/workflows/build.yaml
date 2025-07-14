@@ -28,9 +28,9 @@ jobs:
       shell: cmd
       run: |
          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.platform }}
-         mkdir %GITHUB_WORKSPACE%/build
+         mkdir "%GITHUB_WORKSPACE%/build"
          cmake -S %GITHUB_WORKSPACE% -B "%GITHUB_WORKSPACE%/build" -G Ninja -DCMAKE_BUILD_TYPE:STRING="Release"
-         cmake --build "%GITHUB_WORKSPACE%/build
+         cmake --build "%GITHUB_WORKSPACE%/build"
 
     - name: pack file
       run: |
