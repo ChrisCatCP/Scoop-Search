@@ -10,8 +10,6 @@ on:
    
 
 jobs:
-
-   
   release:
    runs-on: ubuntu-latest
    if: github.event.ref_type == 'tag'
@@ -38,27 +36,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
        
-    - name: intsall-vcpkg
-      working-directory: ${{ env.GITHUB_WORKSPACE }}
-      run: |
-       git clone https://github.com/microsoft/vcpkg
-       .\vcpkg\bootstrap-vcpkg.bat
-      
-      
-    - name: install-library
-      working-directory: ${{ env.GITHUB_WORKSPACE }}
-      shell: cmd
-      run: |
-       cd vcpkg
-       vcpkg install jsoncpp:${{ matrix.platform }}-windows-static
-       
     - name: build
       working-directory: ${{ env.GITHUB_WORKSPACE }} 
       shell: cmd
       run: |
-         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.platform }}
+         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.platform }}
          mkdir %GITHUB_WORKSPACE%/build
-         cmake -S %GITHUB_WORKSPACE% -B "%GITHUB_WORKSPACE%/build" -G Ninja -DCMAKE_TOOLCHAIN_FILE="%GITHUB_WORKSPACE%/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET:STRING="${{ matrix.platform }}-windows-static" -DCMAKE_BUILD_TYPE:STRING="Release"
+         cmake -S %GITHUB_WORKSPACE% -B "%GITHUB_WORKSPACE%/build" -G Ninja -DCMAKE_BUILD_TYPE:STRING="Release"
          cmake --build "%GITHUB_WORKSPACE%/build
     - name: pack file
       run: |
@@ -74,6 +58,4 @@ jobs:
        asset_path: ./${{ matrix.platform }}-Release.zip
        asset_name: ${{ matrix.platform }}-Release.zip
        asset_content_type: application/zip  
-    
-       
-     
+
