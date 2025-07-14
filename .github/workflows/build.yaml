@@ -42,11 +42,4 @@ jobs:
       with:
         files: ./${{ matrix.platform }}-Release.zip
         prerelease: false
-
-    - name: prerelease
-      uses: softprops/action-gh-release@v2
-      if: github.event.ref_type != 'tag'
-      with:
-        name: prerelease
-        files: ./${{ matrix.platform }}-Release.zip
-        prerelease: true
+        make_latest: true
