@@ -99,7 +99,10 @@ namespace scoop
 							util::string_find(value[1].get_ref<const std::string&>(), key_word))
 							app.binaries.emplace_back(std::format("{:s} > {:s}",
 							                                      value[0].get_ref<const std::string&>(),
-							                                      value[1].get_ref<const std::string&>()));
+							                                      value[1].get_ref<const std::string&>().empty()
+								                                      ? fs::path(value[0].get_ref<const std::string&>())
+								                                        .stem().string()
+								                                      : value[1].get_ref<const std::string&>()));
 						break;
 					default: break;
 					}
