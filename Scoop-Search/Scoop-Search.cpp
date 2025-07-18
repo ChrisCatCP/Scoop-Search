@@ -31,15 +31,38 @@ namespace scoop
 	static thread_pool worker{max(std::thread::hardware_concurrency() / 2, 1)};
 	static std::string system_bit = util::get_system_bit();
 
+	static std::optional<fs::path> find_scoop_by_env()
+	{
+		const auto scoop_env = getenv("SCOOP");
+		if (!scoop_env) return std::nullopt;
+		fs::path scoop_path = scoop_env;
+		if (scoop_path.empty())
+			return std::nullopt;
+		if (!exists(scoop_path / "shims" / "scoop.ps1"))
+			return std::nullopt;
+		return std::move(scoop_path);
+	}
+
+	static std::optional<fs::path> find_scoop_by_path()
+	{
+		const auto size = SearchPathW(nullptr, L"scoop.ps1", nullptr, 0, nullptr, nullptr);
+		if (!size) return std::nullopt;
+		const auto buffer = std::make_unique<wchar_t[]>(size);
+		SearchPathW(nullptr, L"scoop.ps1", nullptr, size, buffer.get(), nullptr);
+		const fs::path scoop = buffer.get();
+		if (scoop.parent_path().stem() != L"shims")
+			return std::nullopt;
+		return scoop.parent_path().parent_path();
+	}
+
 	static fs::path get_scoop_path()
 	{
-		fs::path scoop_path = getenv("SCOOP");
-		if (!exists(scoop_path))
-		{
-			std::cerr << "error:cant find scoop path" << '\n';
-			std::abort();
-		}
-		return scoop_path;
+		auto scoop_path = find_scoop_by_env();
+		if (scoop_path) return scoop_path.value();
+		scoop_path = find_scoop_by_path();
+		if (scoop_path) return scoop_path.value();
+		std::cerr << "error:cant find scoop path" << '\n';
+		std::abort();
 	}
 
 	static std::vector<fs::path> get_buckets()
