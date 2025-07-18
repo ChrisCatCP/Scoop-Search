@@ -17,29 +17,34 @@ on:
 jobs: 
   build:
     runs-on: windows-2022
-    strategy:
-      matrix:
-        platform: [x86, x64]    
     steps:
     - uses: actions/checkout@v2
-       
     - name: build
       working-directory: ${{ env.GITHUB_WORKSPACE }} 
       shell: cmd
       run: |
-         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.platform }}
+         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x86
          mkdir "%GITHUB_WORKSPACE%/build"
-         cmake -S %GITHUB_WORKSPACE% -B "%GITHUB_WORKSPACE%/build" -G Ninja -DCMAKE_BUILD_TYPE:STRING="Release"
+         cmake -S %GITHUB_WORKSPACE% -B "%GITHUB_WORKSPACE%/x86/build" -G Ninja -DCMAKE_BUILD_TYPE:STRING="Release"
          cmake --build "%GITHUB_WORKSPACE%/build"
+
+         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+         mkdir "%GITHUB_WORKSPACE%/build"
+         cmake -S %GITHUB_WORKSPACE% -B "%GITHUB_WORKSPACE%/x64/build" -G Ninja -DCMAKE_BUILD_TYPE:STRING="Release"
+         cmake --build "%GITHUB_WORKSPACE%/build"
+
 
     - name: pack file
       run: |
-       Compress-Archive -Path ./build/Scoop-Search/Scoop-Search.exe -DestinationPath ./${{ matrix.platform }}-Release.zip
+       Compress-Archive -Path ./build/x86/Scoop-Search/Scoop-Search.exe -DestinationPath ./x86-Release.zip
+       Compress-Archive -Path ./build/x64/Scoop-Search/Scoop-Search.exe -DestinationPath ./x64-Release.zip
        
     - name: release
       uses: softprops/action-gh-release@v2
       if: github.event.ref_type == 'tag'
       with:
-        files: ./${{ matrix.platform }}-Release.zip
+        files: |
+          ./x86-Release.zip
+          ./x64-Release.zip
         prerelease: false
         make_latest: true
